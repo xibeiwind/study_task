@@ -1,9 +1,9 @@
 package blogs
 
 import (
+	"github.com/gin-gonic/gin"
 	"net/http"
 	"strconv"
-	"github.com/gin-gonic/gin"
 )
 
 // 评论功能
@@ -43,10 +43,30 @@ func GetCommentsByPostID(c *gin.Context) {
 	}
 }
 
-// 实现评论的删除功能，已认证的用户可以删除自己发布的评论。
-func DeleteComment(c *gin.Context) { 
+func UpdateComment(c *gin.Context) {
 	db := getDB(c)
-	if userId, exists := c.Get("user_id"); exists { 
+	if userId, exists := c.Get("user_id"); exists {
+		commentId := c.Param("comment_id")
+		var comment Comment
+		c.ShouldBindJSON(&comment)
+
+		err := db.Model(&Comment{}).Where("id = ? AND user_id = ?", commentId, userId).Updates(map[string]interface{}{
+			"content": comment.Content,
+		}).Error
+		if err != nil {
+			c.JSON(http.StatusOK, Response{Code: 500, Msg: err.Error()})
+		} else {
+			c.JSON(http.StatusOK, Response{Code: 200, Msg: "更新成功"})
+		}
+	} else {
+		c.JSON(http.StatusUnauthorized, Response{Code: 500, Msg: "用户不存在"})
+	}
+}
+
+// 实现评论的删除功能，已认证的用户可以删除自己发布的评论。
+func DeleteComment(c *gin.Context) {
+	db := getDB(c)
+	if userId, exists := c.Get("user_id"); exists {
 		commentId := c.Param("comment_id")
 		err := db.Where("id = ? AND user_id = ?", commentId, userId).Delete(&Comment{}).Error
 		if err != nil {

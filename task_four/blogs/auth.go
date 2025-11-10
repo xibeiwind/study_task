@@ -60,15 +60,29 @@ func Register(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	db := getDB(c)
-	if db == nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "数据库连接失败"})
+	// 判断user.Username是否为空
+	if user.Username == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "用户名不能为空"})
+		return
+	}
+	if user.Password == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "密码不能为空"})
+		return
+	}
+	// 判断邮箱是否为空
+	if user.Email == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "邮箱不能为空"})
 		return
 	}
 
+	db := getDB(c)
+
 	if db.Where("username = ?", user.Username).First(&user).Error == nil {
-		// return errors.New("用户已存在")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "用户已存在"})
+		return
+	}
+	if db.Where("email = ?", user.Email).First(&user).Error == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "邮箱已存在"})
 		return
 	}
 	if pwd, err := encryptPassword(user.Password); err != nil {
@@ -88,7 +102,7 @@ func Register(c *gin.Context) {
 }
 
 func Login(c *gin.Context) {
-	var vm User
+	var vm UserLogin
 	if err := c.ShouldBindJSON(&vm); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

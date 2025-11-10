@@ -13,14 +13,20 @@ import (
 
 type User struct {
 	ID       int    `gorm:"primaryKey"`
-	Username string `gorm:"unique; not null"`
+	Username string `gorm:"unique; not null" binding:"required"`
 	Password string `gorm:"not null"`
-	Email    string `gorm:"unique"`
+	Email    string `gorm:"unique;not null" binding:"required"`
 }
+
+type UserLogin struct { 
+	Username string `binding:"required"`
+	Password string `binding:"required"`
+}
+
 type Post struct {
-	ID        int `gorm:"primaryKey"`
-	Title     string
-	Content   string
+	ID        int    `gorm:"primaryKey"`
+	Title     string `binding:"required"`
+	Content   string `binding:"required"`
 	UserID    int
 	User      User      `json:"omitempty"`
 	Comments  []Comment `json:"omitempty"`
@@ -28,8 +34,8 @@ type Post struct {
 	UpdatedAt time.Time
 }
 type Comment struct {
-	ID        int `gorm:"primaryKey"`
-	Content   string
+	ID        int    `gorm:"primaryKey"`
+	Content   string `binding:"required"`
 	UserID    int
 	User      User `json:"omitempty"`
 	PostID    int
