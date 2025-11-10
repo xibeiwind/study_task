@@ -22,26 +22,25 @@ func ConnectSqlistDB() *gorm.DB {
 
 func main() {
 	db := ConnectSqlistDB()
-	DBMiddleware(db)
 
 	r := gin.Default()
+	r.Use(DBMiddleware(db))
+	r.Use(AuthMiddleware())
+	// r.Use(JWTMiddleware())
 
 	r.POST("/register", blogs.Register)
 	r.POST("/login", blogs.Login)
 
 	r.GET("/articles", blogs.GetArticles)
-	r.GET("/articles/:id", blogs.GetArticle)
+	r.GET("/articles/:id",blogs.GetArticle)
+	r.POST("/articles",  JWTMiddleware(), blogs.CreateArticle)
+	r.PUT("/articles/:id",  JWTMiddleware(), blogs.UpdateArticle)
+	r.DELETE("/articles/:id", JWTMiddleware(),  blogs.DeleteArticle)	
+
 	r.GET("/comments/:post_id", blogs.GetCommentsByPostID)
+	r.POST("/comments/:post_id", JWTMiddleware(),  blogs.CreateComment)
+	r.DELETE("/comments/:comment_id", JWTMiddleware(),  blogs.DeleteComment)
 
-	protected := r.Group("/api")
-
-	protected.Use(JWTMiddleware())
-	{
-		r.POST("/articles", blogs.CreateArticle)
-		r.PUT("/articles/:id", blogs.UpdateArticle)
-		r.DELETE("/articles/:id", blogs.DeleteArticle)
-
-		r.POST("/comments", blogs.CreateComment)
-	}
+	r.Run(":5055")
 
 }

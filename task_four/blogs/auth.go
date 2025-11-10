@@ -12,7 +12,7 @@ import (
 
 // Claims 结构体（根据实际 JWT payload 自定义）
 type Claims struct {
-	UserID   uint   `json:"user_id"`
+	UserID   int   `json:"user_id"`
 	Username string `json:"username"`
 	jwt.RegisteredClaims
 }
@@ -30,7 +30,7 @@ func generateToken(user User, jwtSecret []byte) jwt.Token {
 	// 使用 JWT（JSON Web Token）实现用户认证和授权，用户登录成功后返回一个 JWT，后续的需要认证的接口需要验证该 JWT 的有效性。
 	// 生成 JWT
 	claims := &Claims{
-		UserID:   uint(user.ID),
+		UserID:   int(user.ID),
 		Username: user.Username,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(2 * time.Hour)),
@@ -84,12 +84,12 @@ func Register(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{"message": "注册成功"})
+	c.JSON(http.StatusOK, gin.H{"message": "注册成功"})
 }
 
 func Login(c *gin.Context) {
-	var tmp User
-	if err := c.ShouldBindJSON(&tmp); err != nil {
+	var vm User
+	if err := c.ShouldBindJSON(&vm); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -99,31 +99,30 @@ func Login(c *gin.Context) {
 		return
 	}
 	var user User
-	if db.Where("username = ?", user.Username).First(&user).Error != nil {
+	if db.Where("username = ?", vm.Username).First(&user).Error != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "用户不存在"})
 		return
 	}
 	// 验证密码
-	if pwd, err := encryptPassword(tmp.Password); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	// if pwd, err := encryptPassword(vm.Password); err != nil {
+	// 	c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	// 	return
+	// } else
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(vm.Password)); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "密码错误"})
 		return
 	} else {
 
-		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(pwd)); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "密码错误"})
+		tmp, _ := c.Get("jwtSecret")
+		jwtSecret := tmp.([]byte)
+		// 生成 JWT
+		token := generateToken(user, jwtSecret)
+		tokenString, err := token.SignedString(jwtSecret)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
 			return
-		} else {
-
-			tmp, _ := c.Get("jwtSecret")
-			jwtSecret := tmp.([]byte)
-			// 生成 JWT
-			token := generateToken(user, jwtSecret)
-			tokenString, err := token.SignedString(jwtSecret)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
-				return
-			}
-			c.JSON(http.StatusOK, gin.H{"message": "登录成功", "token": tokenString})
 		}
+		c.JSON(http.StatusOK, gin.H{"message": "登录成功", "token": tokenString})
 	}
 }

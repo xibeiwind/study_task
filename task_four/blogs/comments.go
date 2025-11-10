@@ -3,7 +3,6 @@ package blogs
 import (
 	"net/http"
 	"strconv"
-
 	"github.com/gin-gonic/gin"
 )
 
@@ -13,8 +12,11 @@ func CreateComment(c *gin.Context) {
 	db := getDB(c)
 	if userId, exists := c.Get("user_id"); exists {
 		postId, _ := strconv.Atoi(c.Param("post_id"))
-		content := c.PostForm("content")
-		err := db.Create(&Comment{UserID: userId.(int), PostID: postId, Content: content}).Error
+		// content := c.PostForm("content")
+		var comment Comment
+		c.ShouldBindJSON(&comment)
+
+		err := db.Create(&Comment{UserID: userId.(int), PostID: postId, Content: comment.Content}).Error
 		if err == nil {
 			c.JSON(http.StatusOK, Response{Code: 200, Msg: "评论成功"})
 		} else {
@@ -38,5 +40,19 @@ func GetCommentsByPostID(c *gin.Context) {
 		c.JSON(http.StatusOK, Response{Code: 500, Msg: err.Error()})
 	} else {
 		c.JSON(http.StatusOK, Response{Code: 200, Data: comments})
+	}
+}
+
+// 实现评论的删除功能，已认证的用户可以删除自己发布的评论。
+func DeleteComment(c *gin.Context) { 
+	db := getDB(c)
+	if userId, exists := c.Get("user_id"); exists { 
+		commentId := c.Param("comment_id")
+		err := db.Where("id = ? AND user_id = ?", commentId, userId).Delete(&Comment{}).Error
+		if err != nil {
+			c.JSON(http.StatusOK, Response{Code: 500, Msg: err.Error()})
+		} else {
+			c.JSON(http.StatusOK, Response{Code: 200, Msg: "删除成功"})
+		}
 	}
 }

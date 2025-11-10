@@ -12,7 +12,7 @@ func getUserFromToken(c *gin.Context, db *gorm.DB) (User, error) {
 	// 通过jwt token 获取用户Id
 	if userId, exists := c.Get("user_id"); exists {
 		user := User{}
-		db.Where("id=?", userId.(int)).First(&user)
+		db.Where("id=?", userId).First(&user)
 		return user, nil
 	}
 	return User{}, errors.New("用户不存在")
@@ -23,14 +23,18 @@ func getUserFromToken(c *gin.Context, db *gorm.DB) (User, error) {
 func CreateArticle(c *gin.Context) {
 	db := getDB(c)
 
-	title, content := c.PostForm("title"), c.PostForm("content")
 	// 如何通过jwt token 获取信息
 	if user, err := getUserFromToken(c, db); err != nil {
 		// return err
 		c.JSON(http.StatusUnauthorized, Response{Code: 500, Msg: "用户不存在"})
 	} else {
 		// 创建文章
-		err = db.Create(&Post{Title: title, Content: content, UserID: user.ID}).Error
+		var post Post
+		if err := c.ShouldBindJSON(&post); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		err = db.Create(&Post{Title: post.Title, Content: post.Content, UserID: user.ID}).Error
 		if err != nil {
 			c.JSON(http.StatusOK, Response{Code: 500, Msg: err.Error()})
 		} else {
@@ -69,11 +73,19 @@ func GetArticle(c *gin.Context) {
 func UpdateArticle(c *gin.Context) {
 	db := getDB(c)
 	id := c.Param("id")
-	title, content := c.PostForm("title"), c.PostForm("content")
 	// 如何通过jwt token 获取信息
 	if userId, exists := c.Get("user_id"); exists {
 		// 更新文章
-		err := db.Model(&Post{}).Where("id = ? AND user_id = ?", id, userId.(int)).Update("title", title).Update("content", content).Error
+		var post Post
+		if err := c.ShouldBindJSON(&post); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		err := db.Model(&Post{}).Where("id = ? AND user_id = ?", id, userId).Updates(map[string]interface{}{
+			"title":post.Title,
+			"content":post.Content,
+		}).Error
+		// .Update("title", post.Title).Update("content", post.Content).Error
 		if err != nil {
 			c.JSON(http.StatusOK, Response{Code: 500, Msg: err.Error()})
 		} else {

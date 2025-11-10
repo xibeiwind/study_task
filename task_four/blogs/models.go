@@ -18,22 +18,22 @@ type User struct {
 	Email    string `gorm:"unique"`
 }
 type Post struct {
-	ID         int       `gorm:"primaryKey"`
-	Title      string
-	Content    string
-	UserID     int
-	User       User
-	Comments   []Comment
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-}
-type Comment struct {
-	ID        int       `gorm:"primaryKey"`
+	ID        int `gorm:"primaryKey"`
+	Title     string
 	Content   string
 	UserID    int
-	User      User
+	User      User      `json:"omitempty"`
+	Comments  []Comment `json:"omitempty"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+type Comment struct {
+	ID        int `gorm:"primaryKey"`
+	Content   string
+	UserID    int
+	User      User `json:"omitempty"`
 	PostID    int
-	Post      Post
+	Post      Post `json:"omitempty"`
 	CreatedAt time.Time
 }
 
